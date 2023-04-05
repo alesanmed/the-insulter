@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  database:
+    image: postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=toor
+      - POSTGRES_DB=insulter_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - "/home/ale/container/postgres/data:/var/lib/postgresql/data"
