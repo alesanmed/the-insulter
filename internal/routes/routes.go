@@ -4,9 +4,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/alesanmed/the-insulter/pkg/categorymanager"
-	"github.com/alesanmed/the-insulter/pkg/middlewares"
-	"github.com/alesanmed/the-insulter/pkg/videomanager"
+	"github.com/alesanmed/the-insulter/internal/categorymanager"
+	"github.com/alesanmed/the-insulter/internal/middlewares"
+	"github.com/alesanmed/the-insulter/internal/videomanager"
 )
 
 func RegisterRoutes(r *chi.Mux) {
