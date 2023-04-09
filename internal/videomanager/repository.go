@@ -3,9 +3,12 @@ package videomanager
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
 	"time"
 
+	"github.com/alesanmed/the-insulter/internal/app"
 	"github.com/lib/pq"
 )
 
@@ -71,28 +74,27 @@ func (repository postgresVideoRepository) GetAllVideos() (v []videoModel) {
 func (repository postgresVideoRepository) CreateVideo(name string, path string, categories []uint) (id uint, err error) {
 	tx, err := repository.DB.Begin()
 	if err != nil {
-		log.Printf("error starting video transaction %v", err)
-		return
+		return 0, fmt.Errorf("error starting transaction: %w", app.NewAPIError(app.ErrInternal.GetStatus(), app.ErrInternal.GetMessage(), err))
 	}
 	defer tx.Rollback()
 
 	err = tx.QueryRow("insert into videos (id, name, url) values (default, $1, $2) returning id", name, path).Scan(&id)
 	if err != nil {
-		log.Printf("error inserting video %v", err)
-		return
+		return 0, fmt.Errorf("error inserting video: %w", app.NewAPIError(app.ErrInternal.GetStatus(), app.ErrBadRequest.GetMessage(), err))
 	}
 
 	for _, category_id := range categories {
 		_, err = tx.Exec("insert into video_categories (video_id, category_id) values ($1, $2)", id, category_id)
 		if err != nil {
-			log.Printf("error inserting category association %v", err)
-			return
+			if pqErr, ok := err.(*pq.Error); ok && pqErr.Code.Name() == "foreign_key_violation" {
+				return 0, fmt.Errorf("error inserting category: %w", app.NewAPIError(http.StatusBadRequest, fmt.Sprintf("category id does not exist: %d", category_id), err))
+			}
+			return 0, fmt.Errorf("error inserting category association: %w", app.NewAPIError(app.ErrInternal.GetStatus(), app.ErrInternal.GetMessage(), err))
 		}
 	}
 
 	if err = tx.Commit(); err != nil {
-		log.Printf("error committing video transaction %v", err)
-		return
+		return 0, fmt.Errorf("error committing video transaction: %w", app.NewAPIError(app.ErrInternal.GetStatus(), app.ErrInternal.GetMessage(), err))
 	}
 
 	return

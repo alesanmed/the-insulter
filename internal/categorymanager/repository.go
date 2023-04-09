@@ -2,8 +2,11 @@ package categorymanager
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"time"
+
+	"github.com/alesanmed/the-insulter/internal/app"
 )
 
 type CategoryRepository interface {
@@ -54,8 +57,7 @@ func (repository postgresCategoryRepository) GetAllCategories() (categories []ca
 func (repository postgresCategoryRepository) CreateCategory(name string) (id uint, err error) {
 	sql := "insert into categories (id, name) values (default, $1) RETURNING id"
 	if err = repository.DB.QueryRow(sql, name).Scan(&id); err != nil {
-		log.Printf("error inserting category %v", err)
-		return
+		return 0, fmt.Errorf("error inserting category: %w", app.NewAPIError(app.ErrInternal.GetStatus(), app.ErrInternal.GetMessage(), err))
 	}
 
 	return

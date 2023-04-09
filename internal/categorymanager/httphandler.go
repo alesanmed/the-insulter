@@ -2,8 +2,10 @@ package categorymanager
 
 import (
 	"encoding/json"
-	"log"
+	"fmt"
 	"net/http"
+
+	"github.com/alesanmed/the-insulter/internal/app"
 )
 
 type CreateCategoryDto struct {
@@ -24,7 +26,7 @@ func NewController(service *categoryService) categoryController {
 	}
 }
 
-func (controller *categoryController) GetAllCategoriesController(w http.ResponseWriter, r *http.Request) {
+func (controller *categoryController) GetAllCategoriesController(w http.ResponseWriter, r *http.Request) (err error) {
 	encoder := json.NewEncoder(w)
 
 	categories := controller.svc.GetAllCategories()
@@ -32,25 +34,23 @@ func (controller *categoryController) GetAllCategoriesController(w http.Response
 	encoder.Encode(categories)
 
 	w.WriteHeader(http.StatusOK)
+
+	return
 }
 
-func (controller *categoryController) CreateCategoryController(w http.ResponseWriter, r *http.Request) {
+func (controller *categoryController) CreateCategoryController(w http.ResponseWriter, r *http.Request) error {
 	decoder := json.NewDecoder(r.Body)
 
 	var category CreateCategoryDto
 
 	err := decoder.Decode(&category)
 	if err != nil {
-		log.Printf("error decoding CreateCategoryDto %v", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		return fmt.Errorf("error decoding CreateCategoryDto: %w", app.NewAPIError(http.StatusBadRequest, "Invalid category body", err))
 	}
 
 	id, err := controller.svc.CreateCategory(category.Name)
 	if err != nil {
-		log.Printf("error creating category %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	encoder := json.NewEncoder(w)
@@ -59,4 +59,6 @@ func (controller *categoryController) CreateCategoryController(w http.ResponseWr
 	encoder.Encode(CreateCategoryResponse{
 		ID: id,
 	})
+
+	return nil
 }

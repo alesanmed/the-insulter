@@ -1,16 +1,17 @@
 package videomanager
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"mime"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 
+	"github.com/alesanmed/the-insulter/internal/app"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 )
@@ -53,15 +54,13 @@ func (svc *videoService) CreateVideo(reader *multipart.Reader) (created_id uint,
 
 	video_id, err := uuid.NewRandom()
 	if err != nil {
-		log.Printf("error creating video UUID, %v", err)
-		return
+		return 0, fmt.Errorf("error creating video UUID: %w", app.NewAPIError(app.ErrInternal.GetStatus(), app.ErrInternal.GetMessage(), err))
 	}
 	video_path := viper.GetString("VIDEO_FOLDER") + video_id.String()
 
 	video_writer, err := os.Create(video_path)
 	if err != nil {
-		log.Printf("error creating video file, %v", err)
-		return
+		return 0, fmt.Errorf("error creating video file: %w", app.NewAPIError(app.ErrInternal.GetStatus(), app.ErrInternal.GetMessage(), err))
 	}
 	defer func() {
 		video_writer.Close()
@@ -74,21 +73,17 @@ func (svc *videoService) CreateVideo(reader *multipart.Reader) (created_id uint,
 		if part.FormName() == "video" {
 			mime_type, _, err := mime.ParseMediaType(part.Header.Get("Content-Type"))
 			if err != nil {
-				log.Printf("error parsing file type %v", err)
-				return 0, err
+				return 0, fmt.Errorf("error parsing file type: %w", app.NewAPIError(http.StatusBadRequest, "invalid mime header", err))
 			}
 
 			if _, ok := svc.accepted_video_formats[mime_type]; !ok {
-				log.Printf("file type not accepted, %s", mime_type)
-				err = errors.New("invalid file type")
-				return 0, err
+				return 0, fmt.Errorf("error uploading video: %w", app.NewAPIError(http.StatusBadRequest, "file type %s not accepted", nil))
 			}
 
 			video_ext = filepath.Ext(part.FileName())
 
 			if written, err := io.Copy(video_writer, part); err != nil {
-				log.Printf("error creating video file, %v", err)
-				return 0, err
+				return 0, fmt.Errorf("error creating video file: %w", app.NewAPIError(app.ErrInternal.GetStatus(), app.ErrInternal.GetMessage(), err))
 			} else {
 				log.Printf("written %d bytes", written)
 			}
@@ -102,8 +97,7 @@ func (svc *videoService) CreateVideo(reader *multipart.Reader) (created_id uint,
 						category += string(category_bytes[:n])
 						break
 					} else {
-						fmt.Printf("err parsing category %v", err)
-						return 0, err
+						return 0, fmt.Errorf("error parsing category: %w", app.NewAPIError(http.StatusBadRequest, "Bad category format", err))
 					}
 				} else {
 					category += string(category_bytes)
@@ -113,8 +107,7 @@ func (svc *videoService) CreateVideo(reader *multipart.Reader) (created_id uint,
 			parsed_category, err := strconv.Atoi(category)
 
 			if err != nil {
-				log.Printf("error parsing category, %v", err)
-				return 0, err
+				return 0, fmt.Errorf("error parsing category: %w", app.NewAPIError(http.StatusBadRequest, "invalid category: "+category, err))
 			}
 
 			categories = append(categories, uint(parsed_category))
@@ -127,8 +120,7 @@ func (svc *videoService) CreateVideo(reader *multipart.Reader) (created_id uint,
 						video_name += string(video_name_bytes[:n])
 						break
 					} else {
-						fmt.Printf("err parsing video name %v", err)
-						return 0, err
+						return 0, fmt.Errorf("error uploading video: %w", app.NewAPIError(http.StatusBadRequest, "bad video name", err))
 					}
 				} else {
 					video_name += string(video_name_bytes)

@@ -1,6 +1,7 @@
 package videomanager
 
 import (
+	"github.com/alesanmed/the-insulter/internal/app"
 	"github.com/alesanmed/the-insulter/internal/database"
 	"github.com/go-chi/chi/v5"
 )
@@ -10,6 +11,6 @@ func RegisterRoutes(r *chi.Mux) {
 	service := NewService(&repository)
 	controller := NewController(&service)
 
-	r.Get("/video", controller.GetVideosController)
-	r.Post("/video", controller.CreateVideoController)
+	r.Get("/video", app.HandlerWithErrors(controller.GetVideosController))
+	r.Post("/video", app.HandlerWithErrors(controller.CreateVideoController))
 }

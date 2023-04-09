@@ -3,7 +3,6 @@ package videomanager
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 )
 
@@ -17,7 +16,7 @@ func NewController(svc *videoService) videoController {
 	}
 }
 
-func (controller *videoController) GetVideosController(w http.ResponseWriter, r *http.Request) {
+func (controller *videoController) GetVideosController(w http.ResponseWriter, r *http.Request) error {
 	encoder := json.NewEncoder(w)
 
 	videos := controller.svc.GetAllVideos()
@@ -25,23 +24,23 @@ func (controller *videoController) GetVideosController(w http.ResponseWriter, r 
 	encoder.Encode(videos)
 
 	w.WriteHeader(http.StatusOK)
+
+	return nil
 }
 
-func (controller *videoController) CreateVideoController(w http.ResponseWriter, r *http.Request) {
+func (controller *videoController) CreateVideoController(w http.ResponseWriter, r *http.Request) (err error) {
 	reader, err := r.MultipartReader()
 	if err != nil {
-		log.Printf("error creating form reader, %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	created_id, err := controller.svc.CreateVideo(reader)
-
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(fmt.Sprintf(`{ "id": %d }`, created_id)))
+
+	return
 }
